@@ -147,6 +147,13 @@ PopDialog::PopDialog(const char *time, const char *result)
     connect(menuBtn, &QPushButton::clicked, this, &PopDialog::accept);
 }
 
+PopDialog::~PopDialog()
+{
+    delete timeLabel; delete resultLabel;
+    delete menuBtn;
+    delete layout;
+}
+
 HistoryWindow::HistoryWindow(QString file, QWidget *parent)
     : QMainWindow{parent}
 {
@@ -232,8 +239,16 @@ HistoryWindow::HistoryWindow(QString file, QWidget *parent)
 
 HistoryWindow::~HistoryWindow()
 {
-    if (board != nullptr) delete board;
-    if (thread != nullptr) delete thread;
+    if (board != nullptr) 
+    {
+        delete board;
+        board = nullptr;
+    }
+    if (thread != nullptr) 
+    {
+        delete thread;
+        board = nullptr;
+    }
 
     delete whiteLabel;
     delete blackLabel;
@@ -377,6 +392,6 @@ void HistoryWindow::finish()
     {
         // if (running) thread->terminate();
         this->parentWidget()->show();
-        delete this;
+        close();
     }
 }

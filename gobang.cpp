@@ -41,7 +41,7 @@ Board::Board(bool wt, gameMode mode, bool piece, bool sequence, QString historyD
 
         if (!file.open(QIODevice::WriteOnly|QIODevice::Text))
         {
-            qDebug() << "[GoBang] error: Fail to open file" << historyPath << "\n";
+            qDebug() << "[GoBang] error: Fail to open file" << historyPath;
         }
 
         QTextStream out(&file);
@@ -64,6 +64,13 @@ Board::Board(bool wt, gameMode mode, bool piece, bool sequence, QString historyD
         }
         rows[r][BSIZE] = '\0';
     }
+
+    qDebug() << "[GoBang] Board has been created";
+}
+
+Board::~Board()
+{
+    qDebug() << "[GoBang] Board has been destoryed";
 }
 
 char Board::getPiece(int row, int col)
@@ -106,7 +113,14 @@ void Board::hypotenuseURtLL(char *str, int b, char bd[BSIZE][BSIZE+1])
 
 bool Board::MINTurn()
 {
-    return turn;
+    if (status == play) return turn;
+    return false;
+}
+
+bool Board::MAXTurn()
+{
+    if (status == play) return !turn;
+    return false;
 }
 
 void Board::changeTurn()
@@ -252,7 +266,11 @@ void Board::writeInfo()
 
     long long totalTime = (finishTime - startTime) / 1000;
     out << totalTime << " ";
-    out << status << "\n";
+    if (status == maxWin) out << "1" << "\n";
+    else if (status == minWin) out << "2" << "\n";
+    else if (status == tie) out << "3" << "\n";
+
+    file.close();
 }
 
 void Board::removeThisHistory()
@@ -378,6 +396,8 @@ GoBangThread::GoBangThread(gameMode m, int depth, QObject *parent):QThread(paren
     qRegisterMetaType<Board>();
     qRegisterMetaType<Board*>();
 
+    qDebug() << "[GoBang] Game Thread has been created";
+
     board = nullptr;
     mode = m;
     dep = depth;
@@ -386,7 +406,7 @@ GoBangThread::GoBangThread(gameMode m, int depth, QObject *parent):QThread(paren
 
 GoBangThread::~GoBangThread()
 {
-
+    qDebug() << "[GoBang] Game Thread has been destoryed";
 }
 
 void GoBangThread::Go(bool who)
@@ -397,6 +417,7 @@ void GoBangThread::Go(bool who)
     board->updateStatus();
     // notice game windows to update
     emit AIDone();
+    msleep(1000);
     // if need continue ...
     if (board->getStatus() == play)
     {   // flip turn
@@ -521,7 +542,7 @@ long long GoBangThread::minValue(int depth, long long alpha, long long beta, boo
 void GoBangThread::run()
 {
     if (board == nullptr) return;
-    qDebug() << "[GoBang] thread is running...\n";
+    qDebug() << "[GoBang] Game Thread is running...";
     startTime = clock();
     board->writeHistory();  // init
     if (board->getStatus() == play && ((mode == PVE && !board->MINTurn()) || mode == EVE) )
@@ -531,7 +552,7 @@ void GoBangThread::run()
     }
     while(board->getStatus() == play)
     {
-        if (!board->MINTurn() && mode != PVP)
+        if (board->MAXTurn() && mode != PVP)
         {   // MAX's turn
             rowNext = colNext = -1;
             AlphaBeta(true);
@@ -555,6 +576,7 @@ void GoBangThread::playerAct(int row, int col)
 {
     if (mode == EVE) return;
     if (mode == PVE && !board->MINTurn()) return;
+    if (!board->MINTurn() && !board->MAXTurn()) return;
 
     char p = board->getPiece(row, col);
     if (p == 'x' || p != '0') return;
@@ -563,7 +585,7 @@ void GoBangThread::playerAct(int row, int col)
     {
         if (!board->act(row, col, MINPIECE)) return;
     }
-    else
+    else if (board->MAXTurn())
     {
         if (!board->act(row, col, MAXPIECE)) return;
     }
@@ -594,6 +616,8 @@ HistoryThread::HistoryThread(QString _file, QObject *parent):QThread(parent)
     qRegisterMetaType<Board>();
     qRegisterMetaType<Board*>();
 
+    qDebug() << "[GoBang] History Thread has been created";
+
     filePath = _file;
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
@@ -618,7 +642,7 @@ HistoryThread::HistoryThread(QString _file, QObject *parent):QThread(parent)
 
 HistoryThread::~HistoryThread()
 {
-
+    qDebug() << "[GoBang] History Thread has been destoryed";
 }
 
 gameMode HistoryThread::getMode()
@@ -652,6 +676,7 @@ void HistoryThread::updateBoard(QString str, int row)
 
 void HistoryThread::run()
 {
+    qDebug() << "[GoBang] History Thread is running...";
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
     {
@@ -681,18 +706,16 @@ void HistoryThread::run()
             char *str = ba.data();
             sscanf(str, "%lld", &totalTime);
             QString res = list.last();
-            if (res == "0") final = play;
-            else if (res == "1") final = maxWin;
+            if (res == "1") final = maxWin;
             else if (res == "2") final = minWin;
             else if (res == "3") final = tie;
             break;
         }
-        msleep(1000);
+        msleep(500);
     }
 
-    emit done();
-
     file.close();
+    emit done();    
 }
 
 void HistoryThread::setBoard(Board *_board)
@@ -734,7 +757,7 @@ void createFile(QString filePath, QString fileName)
     if(!curDir.exists(filePath))
     {
         curDir.mkpath(filePath);
-        qDebug()<< "[GoBang] message: create directory" << filePath << "\n";
+        qDebug()<< "[GoBang] create directory" << filePath;
     }
     QFile *thisFile = new QFile;
     // set execute path to filePath
@@ -745,9 +768,9 @@ void createFile(QString filePath, QString fileName)
     // else create file
     thisFile->setFileName(fileName);
     if(!thisFile->open(QIODevice::WriteOnly|QIODevice::Text))
-        qDebug()<< "[GoBang] error: fail to create file" << fileName << "\n";
+        qDebug()<< "[GoBang] error: fail to create file" << fileName;
     else
-        qDebug() << "[GoBang] message: Create file" << filePath+fileName << "\n";
+        qDebug() << "[GoBang] Create file" << filePath+fileName;
     thisFile->close();
     // set current path of program back to origin path
     curDir.setCurrent(curPath);

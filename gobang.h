@@ -100,6 +100,7 @@ class Board
 {
 public:
     Board(bool wt, gameMode mode, bool piece = false, bool sequence = true, QString historyDirectory=HISDIR);
+    ~Board();
 
     // return piece on board[row][col]: 'B' for Black piece / 'W' for White piece / '0' for nothing / 'x' for error
     char getPiece(int row, int col);
@@ -111,6 +112,8 @@ public:
 
     // if MIN's turn?
     bool MINTurn();
+    // if MAX's turn?
+    bool MAXTurn();
     // flip turn
     void changeTurn();
 

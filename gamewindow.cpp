@@ -177,8 +177,14 @@ DoneDialog::DoneDialog(const char *time, const char *result)
 
     this->setGeometry(320+boardSize/2+boardOffset+boardGap, 160+boardSize/2+boardOffset+boardGap, 150, 130);
 
-    // connect(againBtn, &QPushButton::clicked, this, &DoneDialog::again);
     connect(menuBtn, &QPushButton::clicked, this, &DoneDialog::accept);
+}
+
+DoneDialog::~DoneDialog()
+{
+    delete timeLabel; delete resultLabel;
+    delete menuBtn;
+    delete layout;
 }
 
 GameWindow::GameWindow(gameMode _mode, bool _piece, bool _sequence, QWidget *parent, int _depth):
@@ -277,8 +283,13 @@ GameWindow::~GameWindow()
         if (board->getStatus() == play)
             board->removeThisHistory();
         delete board;
+        board = nullptr;
     }
-    if (thread != nullptr) delete thread;
+    if (thread != nullptr)
+    {
+        delete thread;
+        thread = nullptr;
+    }
 
     delete whiteLabel;
     delete blackLabel;
@@ -389,6 +400,7 @@ void GameWindow::mouseMoveEvent(QMouseEvent *e)
     if (!running || board == nullptr || thread == nullptr) return;
     if (mode == EVE) return;
     if (mode == PVE && !board->MINTurn()) return;
+    if (!board->MINTurn() && !board->MAXTurn()) return;
 
     int x = e->position().x();
     int y = e->position().y();
@@ -421,6 +433,7 @@ void GameWindow::mousePressEvent(QMouseEvent *e)
     if (!running || board == nullptr || thread == nullptr) return;
     if (mode == EVE) return;
     if (mode == PVE && !board->MINTurn()) return;
+    if (!board->MINTurn() && !board->MAXTurn()) return;
 
     int x = e->position().x();
     int y = e->position().y();
@@ -520,7 +533,7 @@ void GameWindow::finished(gameStatus s, long long t)
     {
         // if (running) thread->terminate();
         this->parentWidget()->show();
-        delete this;
+        close();
     }
 }
 

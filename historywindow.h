@@ -54,6 +54,7 @@ class PopDialog : public QDialog
     Q_OBJECT
 public:
     PopDialog(const char *time, const char *result);
+    ~PopDialog();
 
 private:
     QLabel *timeLabel;

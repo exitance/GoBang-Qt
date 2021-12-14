@@ -71,6 +71,7 @@ class DoneDialog : public QDialog
     Q_OBJECT
 public:
     DoneDialog(const char *time, const char *result);
+    ~DoneDialog();
 
 private:
     QLabel *timeLabel;
